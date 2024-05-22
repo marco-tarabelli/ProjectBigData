@@ -56,6 +56,10 @@ if __name__ == "__main__":
     input_topic = os.environ.get('INPUT_TOPIC')
     output_topic = os.environ.get('OUTPUT_TOPIC')
 
+    logger.info(f"KAFKA_BROKER: {kafka_broker}")
+    logger.info(f"INPUT_TOPIC: {input_topic}")
+    logger.info(f"OUTPUT_TOPIC: {output_topic}")
+
     if not input_topic or not output_topic:
         raise ValueError("INPUT_TOPIC and OUTPUT_TOPIC must be provided as environment variables")
 
