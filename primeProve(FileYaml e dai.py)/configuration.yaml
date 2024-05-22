@@ -1,0 +1,55 @@
+#id: 601ac1a1-321e-45fa-9540-4c252ee2bc77 # magari utile avere una string univoca (es un UUID generato dall'engine) per isolare questa simulazione
+description: a description
+# la sezione output definisce dove pubblichiamo i dati simulati. Potremmo avere più tipi (mqtt, kafka, file, etc.)
+# nel prototipo gestiamo solo MQTT, ma il docice dovrevve essere pesnsato per avere classi Type base, e specializzazioni come questa MQTT
+outputs:
+- type: mqtt  # 
+  host: localhost
+  port: 1883
+  topic: "/mytopic/${PRODUCER_ID}" # la sintassi ${...} indica una variabile istanziata e popolata dal tool. 
+frequency: 1000
+frequency_count: -1
+frequency_random: 0
+# i producers rappresentano i moduli di output che generano il dato effettivo
+# i dati da generare sono quelli sotto "data" in cui la logica è chiave-valore
+producers:
+# 
+# es. l'output de producer sens_temp_1
+#{
+#  "name": "TM-873",
+#  "type": "temperature sensor",
+#  "fw_version": "1.0.0v1",
+#  "temperature": 25,
+#  "unit": "celsius",
+#  "status": "OK"
+#}
+- id: sens_temp_1
+  data:
+    name: TM-873
+    type: temperature sensor
+    fw_version: 1.0.0v1
+    temperature : "$_random.uniform(10.1, 25.5)" # out of scope per ora: nell'engine completo viene invocata la funzione python che genera il valore random
+    status: OK
+#
+# l'output del producer sens_temp_2 è uguale, ma questa volta la temperatura è generata attraverso un container docker che userà la sua logica interna
+# 
+# Nota che le immagini docker saranno definite da un immagine base fornita da noi che implementa i meccanismi di connessione a Kafka, consumo/produzione del dato
+- id: sens_temp_2
+  data:
+    name: TM-874
+    type: temperature sensor
+    fw_version: 1.0.0v1
+    temperature :
+      type: "@docker"
+      image: temperature-generator
+      #input:
+      #  min-temp: 10.1   input legge da topic kafka
+      #  max-temp: 25.5
+      retain-value: true
+      # config specifica parametri aggiuntivi per il container docker
+  config:
+    kafka_broker: broker:9092
+    input_topic: temperature_input
+    output_topic: output_topic #da broker a qui aggiunto noi
+    keep-alive-ms: 10000 #   il container deve rimanere in standby per X tempo prima di spegnersi. Serve ad ottimizzare il tempo di startup
+  status: OK

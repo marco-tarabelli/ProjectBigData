@@ -41,12 +41,15 @@ producers:
     fw_version: 1.0.0v1
     temperature :
       type: "@docker"
-      image: iofog/temperature-sensor-simulator
-      input:
-        min-temp: 10.1
-        max-temp: 25.5
-        retain-value: true
+      image: temperature-generator
+      #input:
+      #  min-temp: 10.1   input legge da topic kafka
+      #  max-temp: 25.5
+      retain-value: true
       # config specifica parametri aggiuntivi per il container docker
-      config:
-        keep-alive-ms: 10000 #   il container deve rimanere in standby per X tempo prima di spegnersi. Serve ad ottimizzare il tempo di startup
-    status: OK
+  config:
+    kafka_broker: broker:9092
+    input_topic: temperature_input
+    output_topic: output_topic #da broker a qui aggiunto noi
+    keep-alive-ms: 10000 #   il container deve rimanere in standby per X tempo prima di spegnersi. Serve ad ottimizzare il tempo di startup
+  status: OK
