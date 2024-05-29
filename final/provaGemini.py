@@ -3,6 +3,7 @@ import json
 import logging
 import threading
 from kafka import KafkaConsumer
+import yaml
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,17 +15,15 @@ class KafkaConsumerManager:
         self.consumer = KafkaConsumer(
             topic,
             bootstrap_servers=['127.0.0.1:9092'],  #specifico server (indirizzo ip e indirizzo broker)
-            auto_offset_reset='latest',
+            auto_offset_reset='earlest',
             enable_auto_commit=True,
-            value_deserializer=lambda x: json.loads(x.decode('utf-8')),
-            #group_id="consumer"
+            value_deserializer=lambda x: json.loads(x.decode('utf-8'))
         )
 
     def start_consumer(self):
         logger.info(f"Starting Kafka consumer for topic: {self.topic}")
         for message in self.consumer:
             print("Messaggio ricevuto:", message.value)
-            #print("Valore del messaggio:", message.value['result'])
             break  # Interrompe il loop dopo aver ricevuto il primo messaggio
 
 
@@ -52,16 +51,27 @@ class DockerStartManager:
             logger.info("Container stopped")
 
 
+
 def main():
+
+    def read_configuration(file_path):
+        with open(file_path, 'r') as file:
+            return yaml.safe_load(file)
+        
+
+    config = read_configuration("final/config.yaml")
+    mqtt_output_config = config["outputs"][0]
+    kafka_producer_config = config["producers"][1]
+
     network = "rmoff_kafka"
     environment = {
-        'KAFKA_BROKER': 'broker:9092',
-        'INPUT_TOPIC': 'temperature_input',
-        'OUTPUT_TOPIC': 'output_topic'
+        'KAFKA_BROKER': kafka_producer_config["config"]["kafka_broker"],
+        'INPUT_TOPIC': kafka_producer_config["config"]["input_topic"],
+        'OUTPUT_TOPIC': kafka_producer_config["config"]["output_topic"]
     }
 
     # Avvio del consumatore Kafka in un thread separato
-    consumer_manager = KafkaConsumerManager(topic='output_topic')
+    consumer_manager = KafkaConsumerManager(topic=environment['OUTPUT_TOPIC'])
     consumer_thread = threading.Thread(target=consumer_manager.start_consumer)
     consumer_thread.start()
     logger.info("Kafka consumer started")
@@ -70,14 +80,13 @@ def main():
     docker_manager = DockerStartManager(network=network, environment=environment)
     docker_manager.start_container(image_name='temperature-generator')
     logger.info("Temperature generator container started")
-    
+
     # Attendere il completamento del thread del consumatore Kafka
     consumer_thread.join()
 
     # Interrompe il container al termine
     docker_manager.stop_container()
     logger.info("Temperature generator container stopped")
-
 
 if __name__ == "__main__":
     main()
