@@ -8,9 +8,11 @@ import yaml
 import paho.mqtt.client as mqtt
 import random
 
+# Set up logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Define a class to manage MQTT connections and messaging
 class MQTTManager:
     def __init__(self, host, port):
         self.host = host
@@ -26,6 +28,7 @@ class MQTTManager:
     def disconnect(self):
         self.client.disconnect()
 
+# Define a class to manage Kafka consumer operations
 class KafkaConsumerManager:
     def __init__(self, topic, num_messages_to_read):
         self.topic = topic
@@ -53,6 +56,7 @@ class KafkaConsumerManager:
             if num_messages_read >= self.num_messages_to_read:
                 break
 
+# Define a class to manage Docker container operations
 class DockerStartManager:
     def __init__(self, network, environment):
         self.network = network
@@ -88,10 +92,11 @@ class DockerStartManager:
             self.container.stop()
             logger.info("Container stopped")
 
-
+# Main function to coordinate the execution
 def main():
     start_time = time.time()  # Get the execution start time
 
+    # Function to read configuration from a YAML file
     def read_configuration(file_path):
         with open(file_path, 'r') as file:
             return yaml.safe_load(file)
@@ -99,7 +104,7 @@ def main():
 
     mqtt_config = config["outputs"][0]
     mqtt_manager = MQTTManager(host=mqtt_config["host"], port=mqtt_config["port"])
-    mqtt_manager.connect()
+    mqtt_manager.connect() # Connect to the MQTT broker
 
     network = "rmoff_kafka"
     docker_managers = []  # List to store Docker handlers
@@ -140,11 +145,12 @@ def main():
             mqtt_manager.publish_message(topic, message)
             logger.info(f"Published MQTT message for {producer['id']}")
 
+    # Stop all Docker containers that were started
     for docker_manager in docker_managers:
         docker_manager.stop_container()
         logger.info("Temperature generator container stopped")
 
-    mqtt_manager.disconnect()
+    mqtt_manager.disconnect() # Disconnect from the MQTT broker
 
     end_time = time.time()  # Get the execution end time
     execution_time = end_time - start_time
