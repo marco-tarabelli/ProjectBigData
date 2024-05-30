@@ -3,7 +3,7 @@ import yaml
 import os
 import time
 from kafka import KafkaConsumer
-
+#NON FUNZIONA
 def start_docker_container(config):
     client = docker.from_env()
     image = config.get('image','')

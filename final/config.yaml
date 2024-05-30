@@ -1,0 +1,34 @@
+#id: 601ac1a1-321e-45fa-9540-4c252ee2bc77
+description: a description
+
+outputs:
+  - type: mqtt  
+    host: localhost
+    port: 1883
+    topic: "/mytopic/${PRODUCER_ID}" 
+    frequency: 1000
+    frequency_count: -1
+    frequency_random: 0
+
+producers:
+  - id: sens_temp_1
+    data:
+      name: "TM-873"
+      type: "temperature sensor"
+      fw_version: "1.0.0v1"
+      temperature: "$_random.uniform(10.1, 25.5)" 
+      status: "OK"
+  
+  - id: sens_temp_2
+    data:
+      name: "TM-874"
+      type: "docker sensor"
+      fw_version: "1.0.0v1"    
+    config:
+      retain-value: true
+      image: temperature-generator
+      kafka_broker: "broker:9092"
+      input_topic: "temperature_input"
+      output_topic: "output_topic"
+      keep-alive-ms: 10000
+    status: "OK"
