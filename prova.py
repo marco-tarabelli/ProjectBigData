@@ -56,7 +56,7 @@ def main():
     network = "rmoff_kafka"
     environment = {
         'KAFKA_BROKER': 'broker:9092',
-        'INPUT_TOPIC': 'temperature_input',
+        'INPUT_TOPIC': 'input_topic',
         'OUTPUT_TOPIC': 'output_topic'
     }
 
@@ -68,7 +68,7 @@ def main():
 
     # Avvio del generatore di temperature
     docker_manager = DockerStartManager(network=network, environment=environment)
-    docker_manager.start_container(image_name='temperature-generator')
+    docker_manager.start_container(image_name='marcotarabelli/temperature-generator')
     logger.info("Temperature generator container started")
     
     # Attendere il completamento del thread del consumatore Kafka

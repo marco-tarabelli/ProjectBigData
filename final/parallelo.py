@@ -2,7 +2,7 @@ import docker
 import json
 import logging
 import threading
-import time  # Aggiunto per ottenere l'orario di inizio dell'esecuzione
+import time  # Added to get execution start time
 from kafka import KafkaConsumer
 import yaml
 import paho.mqtt.client as mqtt
@@ -90,7 +90,7 @@ class DockerStartManager:
 
 
 def main():
-    start_time = time.time()  # Ottenere l'orario di inizio dell'esecuzione
+    start_time = time.time()  # Get the execution start time
 
     def read_configuration(file_path):
         with open(file_path, 'r') as file:
@@ -102,17 +102,17 @@ def main():
     mqtt_manager.connect()
 
     network = "rmoff_kafka"
-    docker_managers = []  # Lista per memorizzare i gestori Docker
+    docker_managers = []  # List to store Docker handlers
     num_docker_sensors = 0 
-    kafka_topic = "output_topic"  # Sostituisci con il topic Kafka corretto
+    kafka_topic = "output_topic"  # Replace with the correct Kafka topic
     kafka_consumer_manager = KafkaConsumerManager(kafka_topic, num_messages_to_read=num_docker_sensors)
     kafka_consumer_thread = threading.Thread(target=kafka_consumer_manager.start_consumer)
-    kafka_consumer_thread.start()  # Avvia il consumer Kafka su un thread separato
+    kafka_consumer_thread.start()  # Start the Kafka consumer on a separate thread
 
-    # Aggiungere un messaggio di log per l'inizio dell'esecuzione
+    # Add a log message for the start of execution
     logger.info("Main execution started")
 
-    # Scorrere la lista dei produttori
+    # Scroll through the list of producers
     for producer in config["producers"]:
         producer_type = producer.get("data", {}).get("type")
         logger.info(f"Producer {producer['id']} has type: {producer_type}")
@@ -120,7 +120,7 @@ def main():
             logger.info(f"Docker container thread started for sensor {producer['id']} at: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}")
             num_docker_sensors += 1
             logger.info(f"Found docker sensor producer: {producer['id']}")
-            # Avvio del generatore di temperature Docker su un thread separato
+            # Starting the Docker temp generator on a separate thread
             docker_manager = DockerStartManager(network=network, environment=producer["config"])
             docker_thread = threading.Thread(target=docker_manager.start_container, args=(producer["config"]["image"],))
             docker_thread.start()
@@ -129,7 +129,7 @@ def main():
         else:
             logger.info(f"Docker container thread started for sensor {producer['id']} at: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}")
             logger.info(f"Ignored producer {producer['id']}, not a docker sensor")
-            # Generazione di temperatura casuale e pubblicazione del messaggio MQTT
+            # Generate random temperature and publish MQTT message
             temperature = random.uniform(10.1, 25.5)
             logger.info(f"Generated random temperature for {producer['id']}: {temperature}")
 
@@ -146,7 +146,7 @@ def main():
 
     mqtt_manager.disconnect()
 
-    end_time = time.time()  # Ottenere l'orario di fine dell'esecuzione
+    end_time = time.time()  # Get the execution end time
     execution_time = end_time - start_time
     logger.info(f"Main execution finished in {execution_time} seconds")
 
