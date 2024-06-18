@@ -14,7 +14,7 @@ producers:
   - id: sens_temp_1
     data:
       name: "TM-873"
-      type: "temperature sensor"
+      type: "temperature_sensor"
       fw_version: "1.0.0v1"
       temperature: "$_random.uniform(10.1, 25.5)" 
       status: "OK"

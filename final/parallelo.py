@@ -34,7 +34,7 @@ class KafkaConsumerManager:
             topic,
             bootstrap_servers=['127.0.0.1:9092'],
             auto_offset_reset='earliest',
-            #enable_auto_commit=True,
+            enable_auto_commit=None,
             value_deserializer=lambda x: json.loads(x.decode('utf-8'))
         )
 
