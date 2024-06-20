@@ -1,16 +1,18 @@
 import json
 import logging
 import threading
-import time
+import time  # Added to get execution start time
 import docker
 from kafka import KafkaConsumer
 import yaml
 import paho.mqtt.client as mqtt
 import random
 
+# Set up logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Define a class to manage MQTT connections and messaging
 class MQTTManager:
     def __init__(self, host, port):
         self.host = host
@@ -26,6 +28,7 @@ class MQTTManager:
     def disconnect(self):
         self.client.disconnect()
 
+# Define a class to manage Kafka consumer operations
 class KafkaConsumerManager:
     def __init__(self, topic, mqtt_manager, inactivity_timeout=60, group_id='my_consumer_group'):
         self.topic = topic
@@ -81,7 +84,7 @@ class KafkaConsumerManager:
     def get_all_temperatures(self):
         return list(self.temperatures.values()) 
     
-
+# Define a class to manage Docker container operations
 class DockerStartManager:
     def __init__(self, network, environment):
         self.network = network
@@ -145,9 +148,11 @@ def handle_temperatures_and_publish_messages(kafka_consumer_manager, mqtt_manage
                 mqtt_manager.publish_message(topic, message)
                 logger.info(f"Published MQTT message for {producer_id}")
 
+# Main function to coordinate the execution
 def main():
     start_time = time.time()
 
+    # Function to read configuration from a YAML file
     def read_configuration(file_path):
         with open(file_path, 'r') as file:
             return yaml.safe_load(file)
@@ -158,10 +163,10 @@ def main():
     mqtt_manager.connect()
 
     network = "rmoff_kafka"
-    docker_managers = []
-    kafka_topic = "output_topic"
+    docker_managers = []  # List to store Docker handlers
+    kafka_topic = "output_topic"  # Replace with the correct Kafka topic(????)
     kafka_consumer_manager = KafkaConsumerManager(kafka_topic,mqtt_manager)
-
+    # Add a log message for the start of execution
     logger.info("Main execution started")
 
     kafka_consumer_thread = threading.Thread(target=kafka_consumer_manager.start_consumer)
@@ -170,6 +175,7 @@ def main():
     # Lista per mantenere i thread dei Docker Manager e della generazione casuale della temperatura
     threads = []
 
+    # Scroll through the list of producers
     for producer in config["producers"]:
         producer_id = producer["id"]
         producer_type = producer.get("data", {}).get("type")
@@ -217,8 +223,8 @@ def main():
  #              topic = mqtt_config["topic"].replace("${PRODUCER_ID}", producer_id)
   #             mqtt_manager.publish_message(topic, message)
    #             logger.info(f"Published MQTT message for {producer_id}")
-            
-        
+
+    # Stop all Docker containers that were started
     for docker_manager in docker_managers:
         docker_manager.stop_container()
         logger.info("Temperature generator container stopped")
