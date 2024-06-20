@@ -27,7 +27,7 @@ class MQTTManager:
         self.client.disconnect()
 
 class KafkaConsumerManager:
-    def __init__(self, topic, inactivity_timeout=10, group_id='my_consumer_group'):
+    def __init__(self, topic, mqtt_manager, inactivity_timeout=10, group_id='my_consumer_group'):
         self.topic = topic
         self.active = True
         self.last_message_time = time.time()
@@ -40,6 +40,9 @@ class KafkaConsumerManager:
             group_id=group_id,
             value_deserializer=lambda x: json.loads(x.decode('utf-8'))
         )
+        self.mqtt_manager = mqtt_manager
+        self.temperatures = {}  # Dizionario per salvare le temperature estratte per ogni produttore
+        self.temperature_index = 0 
 
     def start_consumer(self):
         logger.info(f"Starting Kafka consumer for topic: {self.topic}")
@@ -60,11 +63,11 @@ class KafkaConsumerManager:
         try:
             temperature = message.value["temperature"]
             logger.info(f"Temperature read from Kafka: {temperature}")
+            self.temperatures[self.temperature_index] = temperature  # Aggiungi la temperatura al dizionario
+            self.temperature_index += 1 
         except KeyError:
             logger.warning("No temperature information found in Kafka message")
 
-  
-    
     def check_activity(self):
         current_time = time.time()
         time_since_last_message = current_time - self.last_message_time
@@ -73,6 +76,11 @@ class KafkaConsumerManager:
             self.active = False
         else:
             logger.info(f"Time since last message: {time_since_last_message} seconds")
+
+    
+    def get_all_temperatures(self):
+        return list(self.temperatures.values()) 
+    
 
 class DockerStartManager:
     def __init__(self, network, environment):
@@ -124,7 +132,7 @@ def main():
     network = "rmoff_kafka"
     docker_managers = []
     kafka_topic = "output_topic"
-    kafka_consumer_manager = KafkaConsumerManager(kafka_topic)
+    kafka_consumer_manager = KafkaConsumerManager(kafka_topic,mqtt_manager)
 
     logger.info("Main execution started")
 
@@ -135,7 +143,6 @@ def main():
         producer_id = producer["id"]
         producer_type = producer.get("data", {}).get("type")
         logger.info(f"Producer {producer_id} has type: {producer_type}")
-
         if producer_type == "docker sensor":
             logger.info(f"Found docker sensor producer: {producer_id}")
             docker_manager = DockerStartManager(network=network, environment=producer.get("config", {}))
@@ -143,8 +150,7 @@ def main():
             docker_thread.start()
             docker_managers.append(docker_manager)
             logger.info(f"Attempted to start temperature generator Docker container for {producer_id}")
-            
-
+               
         else:
             logger.info(f"Ignored producer {producer_id}, not a docker sensor")
         
@@ -160,17 +166,36 @@ def main():
             mqtt_manager.publish_message(topic, message)
             logger.info(f"Published MQTT message for {producer_id}")
 
+
     time.sleep(20)
+    all_temperatures = kafka_consumer_manager.get_all_temperatures()
+    for index, temperature in enumerate(all_temperatures):
+        logger.info(f"Temperature {index + 1}: {temperature}")
+        for producer in config["producers"]:
+            producer_id = producer["id"]
+            producer_type = producer.get("data", {}).get("type")
+            if producer_type == "docker sensor":
+                logger.info(f" {producer_id} has temperature: {temperature}")
+                sensor_info = yaml.dump(producer.get("data", {}), default_flow_style=True)
+                message = f"Temperature for {producer_id}: {temperature}\nSensor Info:\n{sensor_info}"
 
-
+                topic = mqtt_config["topic"].replace("${PRODUCER_ID}", producer_id)
+                mqtt_manager.publish_message(topic, message)
+                logger.info(f"Published MQTT message for {producer_id}")
+            
+        
     for docker_manager in docker_managers:
         docker_manager.stop_container()
         logger.info("Temperature generator container stopped")
+    
+
+
+   
 
 
     kafka_consumer_thread.join()
     mqtt_manager.disconnect()
-
+    
     end_time = time.time()
     execution_time = end_time - start_time
     logger.info(f"Main execution finished in {execution_time} seconds")

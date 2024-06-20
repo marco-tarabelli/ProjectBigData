@@ -27,7 +27,7 @@ class MQTTManager:
         self.client.disconnect()
 
 class KafkaConsumerManager:
-    def __init__(self, topic, mqtt_manager, inactivity_timeout=10, group_id='my_consumer_group'):
+    def __init__(self, topic, mqtt_manager, inactivity_timeout=60, group_id='my_consumer_group'):
         self.topic = topic
         self.active = True
         self.last_message_time = time.time()
@@ -117,6 +117,34 @@ class DockerStartManager:
             self.container.stop()
             logger.info("Container stopped")
 
+#fare classe per questi due metodi
+def generate_and_publish_temperature(producer_id, mqtt_manager, mqtt_config):
+    temperature = random.uniform(10.1, 25.5)
+    logger.info(f"Generated random temperature for {producer_id}: {temperature}")
+
+    sensor_info = yaml.dump({"data": {"type": "temperature_sensor"}}, default_flow_style=True)
+    message = f"Temperature for {producer_id}: {temperature}\nSensor Info:\n{sensor_info}"
+
+    topic = mqtt_config["topic"].replace("${PRODUCER_ID}", producer_id)
+    mqtt_manager.publish_message(topic, message)
+    logger.info(f"Published MQTT message for {producer_id}")
+
+def handle_temperatures_and_publish_messages(kafka_consumer_manager, mqtt_manager, mqtt_config, config):
+    all_temperatures = kafka_consumer_manager.get_all_temperatures()
+    for index, temperature in enumerate(all_temperatures):
+        logger.info(f"Temperature {index + 1}: {temperature}")
+        for producer in config["producers"]:
+            producer_id = producer["id"]
+            producer_type = producer.get("data", {}).get("type")
+            if producer_type == "docker sensor":
+                logger.info(f" {producer_id} has temperature: {temperature}")
+                sensor_info = yaml.dump(producer.get("data", {}), default_flow_style=True)
+                message = f"Temperature for {producer_id}: {temperature}\nSensor Info:\n{sensor_info}"
+
+                topic = mqtt_config["topic"].replace("${PRODUCER_ID}", producer_id)
+                mqtt_manager.publish_message(topic, message)
+                logger.info(f"Published MQTT message for {producer_id}")
+
 def main():
     start_time = time.time()
 
@@ -139,6 +167,9 @@ def main():
     kafka_consumer_thread = threading.Thread(target=kafka_consumer_manager.start_consumer)
     kafka_consumer_thread.start()
 
+    # Lista per mantenere i thread dei Docker Manager e della generazione casuale della temperatura
+    threads = []
+
     for producer in config["producers"]:
         producer_id = producer["id"]
         producer_type = producer.get("data", {}).get("type")
@@ -149,39 +180,43 @@ def main():
             docker_thread = threading.Thread(target=docker_manager.start_container, args=(producer.get("config", {}).get("image"),))
             docker_thread.start()
             docker_managers.append(docker_manager)
-            logger.info(f"Attempted to start temperature generator Docker container for {producer_id}")
+            threads.append(docker_thread)
+            logger.info(f"Attempted to start temperature generator Docker container for {producer_id} at {time.time() - start_time:.2f} seconds")
+            
                
-        else:
-            logger.info(f"Ignored producer {producer_id}, not a docker sensor")
         
-        # Aggiungi la logica per la pubblicazione MQTT di sens_temp_1
-        if producer_type == "temperature_sensor":
-            temperature = random.uniform(10.1, 25.5)
-            logger.info(f"Generated random temperature for {producer_id}: {temperature}")
+        
+        # Si occupa della logica per la pubblicazione MQTT di sens_temp_1
+        elif producer_type == "temperature_sensor":
+                temp_thread = threading.Thread(target=generate_and_publish_temperature, args=(producer_id, mqtt_manager, mqtt_config))
+                logger.info(f"Starting temperature sensor thread for {producer_id} at {time.time() - start_time:.2f} seconds")
+                temp_thread.start()
+                threads.append(temp_thread)        
+        else:
+            logger.info(f"Ignored producer {producer_id}, not a docker or temperature sensor")        
 
-            sensor_info = yaml.dump(producer.get("data", {}), default_flow_style=True)
-            message = f"Temperature for {producer_id}: {temperature}\nSensor Info:\n{sensor_info}"
+    
+   
+    
 
-            topic = mqtt_config["topic"].replace("${PRODUCER_ID}", producer_id)
-            mqtt_manager.publish_message(topic, message)
-            logger.info(f"Published MQTT message for {producer_id}")
-
+    
 
     time.sleep(20)
-    all_temperatures = kafka_consumer_manager.get_all_temperatures()
-    for index, temperature in enumerate(all_temperatures):
-        logger.info(f"Temperature {index + 1}: {temperature}")
-        for producer in config["producers"]:
-            producer_id = producer["id"]
-            producer_type = producer.get("data", {}).get("type")
-            if producer_type == "docker sensor":
-                logger.info(f" {producer_id} has temperature: {temperature}")
-                sensor_info = yaml.dump(producer.get("data", {}), default_flow_style=True)
-                message = f"Temperature for {producer_id}: {temperature}\nSensor Info:\n{sensor_info}"
 
-                topic = mqtt_config["topic"].replace("${PRODUCER_ID}", producer_id)
-                mqtt_manager.publish_message(topic, message)
-                logger.info(f"Published MQTT message for {producer_id}")
+    #all_temperatures = kafka_consumer_manager.get_all_temperatures()
+    #for index, temperature in enumerate(all_temperatures):
+    #    logger.info(f"Temperature {index + 1}: {temperature}")
+    #    for producer in config["producers"]:
+    #        producer_id = producer["id"]
+    #        producer_type = producer.get("data", {}).get("type")
+     #       if producer_type == "docker sensor":
+      #          logger.info(f" {producer_id} has temperature: {temperature}")
+       #         sensor_info = yaml.dump(producer.get("data", {}), default_flow_style=True)
+        #        message = f"Temperature for {producer_id}: {temperature}\nSensor Info:\n{sensor_info}"
+#
+ #              topic = mqtt_config["topic"].replace("${PRODUCER_ID}", producer_id)
+  #             mqtt_manager.publish_message(topic, message)
+   #             logger.info(f"Published MQTT message for {producer_id}")
             
         
     for docker_manager in docker_managers:
@@ -194,6 +229,10 @@ def main():
 
 
     kafka_consumer_thread.join()
+    handle_temperatures_and_publish_messages(kafka_consumer_manager, mqtt_manager, mqtt_config, config)
+    for thread in threads:
+        thread.join()
+        logger.info(f"Thread {thread.name} finished execution at {time.time() - start_time:.2f} seconds")
     mqtt_manager.disconnect()
     
     end_time = time.time()
