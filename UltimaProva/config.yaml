@@ -7,7 +7,7 @@ outputs:
     port: 1883
     topic: "/mytopic/${PRODUCER_ID}" 
     frequency: 1000
-    frequency_count: -1
+    frequency_count: 5
     frequency_random: 0
 
 producers:
@@ -26,7 +26,8 @@ producers:
       fw_version: "1.0.0v1"    
     config:
       retain-value: true
-      image: temperature-generator
+      image: marcotarabelli/temperatureproducer
+
       kafka_broker: "broker:9092"
       input_topic: "temperature_input"
       output_topic: "output_topic"

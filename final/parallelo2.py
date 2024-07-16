@@ -166,7 +166,7 @@ def main():
     def read_configuration(file_path):
         with open(file_path, 'r') as file:
             return yaml.safe_load(file)
-    config = read_configuration("final\config.yaml")
+    config = read_configuration("config.yaml")
 
     mqtt_config = config["outputs"][0]
     mqtt_manager = MQTTManager(host=mqtt_config["host"], port=mqtt_config["port"])

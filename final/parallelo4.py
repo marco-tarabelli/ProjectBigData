@@ -135,8 +135,9 @@ class TemperatureManager:
         self.mqtt_config = mqtt_config
         self.kafka_consumer_manager = kafka_consumer_manager
         self.config = config
-#Generate a random temperature and publish it on MQTT broker in a specific topic
-    def generate_and_publish_temperature(producer_id, mqtt_manager, mqtt_config):
+
+    #Generate a random temperature and publish it on MQTT broker in a specific topic
+    def generate_and_publish_temperature(self, producer_id, mqtt_manager, mqtt_config):
         temperature = random.uniform(10.1, 25.5)
         logger.info(f"Generated random temperature for {producer_id}: {temperature}")
 
@@ -147,8 +148,8 @@ class TemperatureManager:
         mqtt_manager.publish_message(topic, message)
         logger.info(f"Published MQTT message for {producer_id}")
 
-#Handle temperatures from kafka and publish it on MQTT broker in a specific topic
-    def handle_temperatures_and_publish_messages(kafka_consumer_manager, mqtt_manager, mqtt_config, config):
+    #Handle temperatures from kafka and publish it on MQTT broker in a specific topic
+    def handle_temperatures_and_publish_messages(self, kafka_consumer_manager, mqtt_manager, mqtt_config, config):
         all_temperatures = kafka_consumer_manager.get_all_temperatures()
         for index, temperature in enumerate(all_temperatures):
             logger.info(f"Temperature {index + 1}: {temperature}")
@@ -165,6 +166,7 @@ class TemperatureManager:
                     logger.info(f"Published MQTT message for {producer_id}")
 
 
+
 #Main funcition
 def main():
     start_time = time.time()
@@ -173,7 +175,7 @@ def main():
     def read_configuration(file_path):
         with open(file_path, 'r') as file:
             return yaml.safe_load(file)
-    config = read_configuration("final\config.yaml")
+    config = read_configuration("config.yaml")
 
     mqtt_config = config["outputs"][0]
     mqtt_manager = MQTTManager(host=mqtt_config["host"], port=mqtt_config["port"])

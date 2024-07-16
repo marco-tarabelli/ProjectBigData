@@ -13,8 +13,9 @@ import random
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define a class to manage MQTT connections and messaging
+# This class manages the operations of connecting to an MQTT broker, publishing messages, and disconnecting.
 class MQTTManager:
+    #Initializes the class with the MQTT broker's host and port, and creates an MQTT client.
     def __init__(self, host, port):
         self.host = host
         self.port = port

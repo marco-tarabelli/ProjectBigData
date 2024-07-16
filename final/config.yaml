@@ -26,7 +26,7 @@ producers:
       fw_version: "1.0.0v1"    
     config:
       retain-value: true
-      image: temperature-generator
+      image: marcotarabelli/temperature-generator
       kafka_broker: "broker:9092"
       input_topic: "temperature_input"
       output_topic: "output_topic"
