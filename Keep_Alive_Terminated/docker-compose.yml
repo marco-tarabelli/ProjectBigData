@@ -3,7 +3,7 @@ version: '3.7'
 
 # Define the networks used
 networks:
-  marechiaro_net:
+  bigdata_net:
     driver: bridge
 
 # Define the services
@@ -22,7 +22,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       # Network used
     networks:
-      - marechiaro_net
+      - bigdata_net
 
  # Kafka service
   broker:
@@ -47,4 +47,4 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     # Network used
     networks:
-      - marechiaro_net
+      - bigdata_net
