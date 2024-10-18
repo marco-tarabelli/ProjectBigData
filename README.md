@@ -1,4 +1,4 @@
-
+---
 
 # Data Simulator
 
@@ -18,6 +18,26 @@ The primary goal is to develop a **data-simulation engine** that reads from an *
 - **Kafka Integration**: The system also supports Kafka for message brokering and ensures scalable data ingestion and processing.
 - **Realistic Sensor Behavior**: The simulator reproduces realistic data behavior, such as fluctuating temperature readings from IoT sensors.
 
+## Components
+
+### Input Configuration
+- The configuration is written in **YAML** format.
+- Defines the behavior and characteristics of the sensors, such as sensor type, firmware version, data generation ranges, and more.
+
+### Engine
+The core part of the simulator, responsible for:
+- Reading the configuration file.
+- Instantiating Docker images (fetched from Docker Hub) for simulating sensors.
+- Coordinating the containers.
+- Passing input to the containers via Kafka and receiving output.
+- Collecting outputs to create the final simulated message (as JSON).
+- Publishing the simulated message to an external broker (e.g., MQTT).
+
+### Docker Images
+- Created by third parties (e.g., researchers at Unicam).
+- Encapsulate the behavior necessary to generate sensor outputs.
+- Interact with the engine to receive inputs (via Kafka) and send output back (via Kafka).
+- Handle all background mechanisms for interacting with the engine.
 ## Architecture
 
 The architecture is divided into several key components:
