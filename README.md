@@ -2,31 +2,74 @@
 
 ---
 
-# Data Simulator
+# Sensor Simulation Project
 
 ## Overview
 
-The **Data Simulator** project aims to simulate realistic IoT data, capturing patterns that reflect actual phenomena. For example, when simulating an IoT temperature sensor, the data should show values that follow regular temperature fluctuations over time. The simulator generates these data streams and sends them to an IoT broker, such as MQTT, for further processing.
+This project simulates temperature sensors and Docker-based sensors, generating random temperature data and publishing it to Kafka topics and MQTT brokers. The system uses Docker containers to simulate a real-world environment with a Kafka message broker, a Zookeeper coordinator, and MQTT messaging.
 
-## Project Objective
+The application is designed to:
+- Load sensor configuration from a YAML file.
+- Set up Docker containers for Kafka and Zookeeper.
+- Manage sensors using Python classes.
+- Publish temperature data to Kafka topics and MQTT brokers.
 
-The primary goal is to develop a **data-simulation engine** that reads from an **input configuration** file and generates data messages. These messages can then be sent to a broker like MQTT or consumed by a system that manages IoT sensors or devices.
+## Prerequisites
 
-## Features
+Before running the project, ensure you have installed the following:
 
-- **Configurable Input**: The engine reads sensor data configuration from a YAML file, allowing flexible and customizable simulation of various sensors.
-- **Docker Integration**: Docker containers are used to simulate the sensors, facilitating scalable deployment.
-- **MQTT Broker Communication**: Simulated sensor data is sent via MQTT, a popular messaging protocol for IoT.
-- **Kafka Integration**: The system also supports Kafka for message brokering and ensures scalable data ingestion and processing.
-- **Realistic Sensor Behavior**: The simulator reproduces realistic data behavior, such as fluctuating temperature readings from IoT sensors.
+- Docker
+- Docker Compose
+- Python 3.x
+- Required Python packages (`kafka-python`, `paho-mqtt`, `PyYAML`, etc.)
 
-## Components
+## Running the Project
 
-### Input Configuration
-The configuration is written in **YAML** format and specifies the behavior of the sensors and the connections between the services.
+### Steps to Run
+
+1. **Build Docker Image**:
+   To build the required Docker image, use the following command:
+   ```bash
+   docker build -t finalimage .
+   ```
+
+2. **Set Up Docker Compose**:
+   Build and start the containers using Docker Compose:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Create Kafka Topics**:
+   Kafka topics must be created before starting the application. You can do this by entering the Kafka broker container and running the following commands:
+   ```bash
+   docker exec -it broker /bin/bash
+   kafka-topics --create --topic temperature_input --bootstrap-server broker:9092 --partitions 1 --replication-factor 1
+   kafka-topics --create --topic temperature_output --bootstrap-server broker:9092 --partitions 1 --replication-factor 1
+   ```
+
+4. **Start MQTT Broker**:
+   Ensure your MQTT broker is running on the default port (1883). You can use a service like Mosquitto.
+
+5. **Run the Application**:
+   Once everything is set up, run the application:
+   ```bash
+   python application.py
+   ```
+
+6. **Listen to MQTT Topics**:
+   Use an MQTT client to subscribe to the right topic (e.g., `/mytopic/sens_temp_1`), and you will start receiving the sensor data.
+
+## Project Structure
+
+### Configuration
+
+The configuration is managed using a `config.yaml` file.
+
+#### config.yaml
 
 ```yaml
-description: a description   # This must change for every run
+description: a description   # This should be changed for each run
+
 outputs:
   - type: mqtt  
     host: localhost
@@ -52,7 +95,7 @@ producers:
       fw_version: "1.0.0v1"
       temperature: "$_random.uniform(10.1, 25.5)"
       status: "OK"
-
+  
   - id: sens_temp_2
     type: "docker_sensor"
     data:
@@ -61,18 +104,11 @@ producers:
       status: "OK"
 ```
 
-### Engine
-The engine handles:
-
-- Reading the configuration file.
-- Instantiating Docker images.
-- Passing input to containers via Kafka and receiving output.
-- Publishing the output to MQTT topics.
+This file defines the outputs, Docker configuration, and sensor details, such as their IDs and types.
 
 ### Docker Compose
-Docker Compose is used to orchestrate the Kafka and Zookeeper services, necessary for handling the communication between containers and the simulator.
 
-#### `docker-compose.yml`
+#### docker-compose.yml
 
 ```yaml
 version: '3.7'
@@ -111,133 +147,82 @@ services:
       - bigdata_net
 ```
 
-### Sensor Simulation
+### Application Code
 
-#### `image.py`
+#### application.py
+
+The main entry point of the project is the `application.py` file. The `Application` class loads the configuration, initializes Docker containers, and sets up Kafka consumers and MQTT publishers.
 
 ```python
-import os
-import json
-import logging
-import random
-import time
-from kafka import KafkaConsumer, KafkaProducer
+from ConfigLoader import ConfigLoader
+from DockerManager import DockerManager
+from KafkaTemperatureConsumer import KafkaTemperatureConsumer
+from DockerSensor import DockerSensor
+from TemperatureController import TemperatureController
+from MqttManager import MqttManager
+from SensorManager import SensorManager
+from TemperatureSensor import TemperatureSensor
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+class Application:
+    def __init__(self):
+        self.config = ConfigLoader.load_config()
 
-class TemperatureGenerator:
-    def __init__(self, kafka_broker, input_topic, output_topic):
-        self.kafka_broker = kafka_broker
-        self.input_topic = input_topic
-        self.output_topic = output_topic
-        self.producer = KafkaProducer(bootstrap_servers=kafka_broker)
+        self.docker_manager = DockerManager(docker_config=self.config['docker_config'])
+        self.kafka_consumer = KafkaTemperatureConsumer(
+            topic=self.config['docker_config'].get('output_topic', 'default_topic'),
+            bootstrap_servers=['localhost:19092'],
+            group_id='temperature_reader'
+        )
+        self.mqtt_manager = MqttManager(
+            host=self.config['outputs'][0]['host'],
+            port=self.config['outputs'][0]['port'],
+            topic_format=self.config['outputs'][0]['topic']
+        )
+        self.sensor_manager = SensorManager()
 
-    def generate_random_temperature(self, min_val, max_val):
-        return round(random.uniform(min_val, max_val), 2)
+        for producer in self.config['producers']:
+            if producer['type'] == 'temperature_sensor':
+                self.sensor_manager.add_sensor(
+                    TemperatureSensor(
+                        producer_id=producer['id'],
+                        min_temp=self.config['min_temp'],
+                        max_temp=self.config['max_temp'],
+                        mqtt_manager=self.mqtt_manager,
+                        config=producer['data']
+                    )
+                )
+            elif producer['type'] == 'docker_sensor':
+                self.sensor_manager.add_sensor(
+                    DockerSensor(
+                        producer_id=producer['id'],
+                        docker_manager=self.docker_manager,
+                        kafka_consumer=self.kafka_consumer,
+                        mqtt_manager=self.mqtt_manager,
+                        config=producer['data'],
+                        keep_alive_ms=self.config['keep_alive_ms']
+                    )
+                )
 
-    def send_data_to_kafka(self, topic, data):
-        message_data = json.dumps(data).encode('utf-8')
-        self.producer.send(topic, value=message_data)
-        self.producer.flush()
+        iterations = self.config['frequency_count']
+        if iterations == -1:
+            iterations = float('inf')
 
-    def generate_and_publish_temperature_range(self):
-        min_temp = random.randint(10, 20)
-        max_temp = random.randint(min_temp + 1, 30)
-        temperature_range = {"min_temp": min_temp, "max_temp": max_temp}
-        logger.info(f"Publishing temperature range: {temperature_range}")
-        self.send_data_to_kafka(self.input_topic, temperature_range)
-        return temperature_range
+        self.controller = TemperatureController(
+            sensor_manager=self.sensor_manager,
+            iterations=iterations,
+            config=self.config,
+            kafka_consumer=self.kafka_consumer
+        )
 
-    def generate_and_publish_temperature(self, min_temp, max_temp):
-        temperature = self.generate_random_temperature(min_temp, max_temp)
-        logger.info(f"Generated random temperature: {temperature}")
-        self.send_data_to_kafka(self.output_topic, {"temperature": temperature})
-
-    def start_temperature_generation(self, delay=5):
-        logger.info("Starting temperature generation process...")
-
-        while True:
-            try:
-                temperature_range = self.generate_and_publish_temperature_range()
-                min_temp = temperature_range["min_temp"]
-                max_temp = temperature_range["max_temp"]
-
-                self.generate_and_publish_temperature(min_temp, max_temp)
-                time.sleep(delay)
-
-            except Exception as e:
-                logger.error(f"Error in temperature generation process: {e}")
-
+    def run(self):
+        self.controller.run()
 
 if __name__ == "__main__":
-    kafka_broker = os.environ.get('KAFKA_BROKER', 'broker:9092')
-    input_topic = os.environ.get('INPUT_TOPIC')
-    output_topic = os.environ.get('OUTPUT_TOPIC')
-
-    logger.info(f"INPUT_TOPIC: {input_topic}")
-    logger.info(f"OUTPUT_TOPIC: {output_topic}")
-
-    if not input_topic or not output_topic:
-        raise ValueError("INPUT_TOPIC and OUTPUT_TOPIC must be provided as environment variables")
-
-    temperature_generator = TemperatureGenerator(kafka_broker, input_topic, output_topic)
-    logger.info("Temperature generator started.")
-    temperature_generator.start_temperature_generation(delay=5)
+    app = Application()
+    app.run()
 ```
 
-## Installation
-
-### Prerequisites
-
-To run the **Data Simulator**, you will need the following:
-
-- Docker
-- Docker Compose
-- Kafka (inside Docker)
-- Python 3.x
-- MQTT Broker (e.g., Mosquitto)
-
-### Steps
-
-1. **Clone the Repository**
-
-   ```bash
-   git clone https://github.com/your-repo/data-simulator.git
-   cd data-simulator
-   ```
-
-2. **Build the Docker Image**
-
-   ```bash
-   docker build -t sensor-simulator .
-   ```
-
-3. **Build and Start Docker Compose**
-
-   ```bash
-   docker-compose up --build
-   ```
-
-4. **Create Kafka Topics**
-
-   ```bash
-   docker exec -it kafka-container bash
-   kafka-topics --create --topic sensor-data --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-   ```
-
-5. **Start the MQTT Broker**
-
-   Ensure the MQTT broker (e.g., Mosquitto) is running and listening on the appropriate port.
-
-6. **Run the Simulation Engine**
-
-   ```bash
-   python simulator.py --config input_config.yaml
-   ```
-
 ---
-
 
 
 
