@@ -55,7 +55,8 @@ The architecture is divided into several key components:
 
 The following diagram illustrates the system's architecture:
 
-![Architecture Diagram](your-architecture-diagram.png)
+![Screenshot (657)](https://github.com/user-attachments/assets/a794c315-f46c-4cda-866a-af9a9a31d18a)
+
 
 ## Input Configuration
 
