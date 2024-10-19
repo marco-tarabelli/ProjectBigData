@@ -1,3 +1,5 @@
+
+
 ---
 
 # Data Simulator
@@ -38,6 +40,7 @@ The core part of the simulator, responsible for:
 - Encapsulate the behavior necessary to generate sensor outputs.
 - Interact with the engine to receive inputs (via Kafka) and send output back (via Kafka).
 - Handle all background mechanisms for interacting with the engine.
+
 ## Architecture
 
 The architecture is divided into several key components:
@@ -52,8 +55,7 @@ The architecture is divided into several key components:
 
 The following diagram illustrates the system's architecture:
 
-![Screenshot (657)](https://github.com/user-attachments/assets/70aaa7da-1019-43cf-9dd6-ddf3e26de7d5)
-
+![Architecture Diagram](your-architecture-diagram.png)
 
 ## Input Configuration
 
@@ -84,7 +86,8 @@ This configuration defines two temperature sensors, specifying their data ranges
 To run the **Data Simulator**, you will need the following:
 
 - Docker
-- Kafka
+- Docker Compose
+- Kafka (inside Docker)
 - Python 3.x
 - MQTT Broker (e.g., Mosquitto)
 
@@ -97,26 +100,50 @@ To run the **Data Simulator**, you will need the following:
    cd data-simulator
    ```
 
-2. **Install Dependencies**
+2. **Build the Docker Image**
 
-   Install required Python libraries:
+   Build the Docker image required for the sensor simulation:
 
    ```bash
-   pip install -r requirements.txt
+   docker build -t sensor-simulator .
    ```
 
-3. **Run the Engine**
+3. **Build and Start Docker Compose**
 
-   Start the simulation engine by providing the input configuration file:
+   Build and start all required services (Kafka, MQTT, etc.) using Docker Compose:
+
+   ```bash
+   docker-compose up --build
+   ```
+
+4. **Create Kafka Topics**
+
+   Inside the Kafka container, create the necessary Kafka topics for your sensors:
+
+   ```bash
+   docker exec -it kafka-container bash
+   kafka-topics --create --topic sensor-data --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+   ```
+
+5. **Start the MQTT Broker**
+
+   Ensure the MQTT broker (e.g., Mosquitto) is running and listening on the appropriate port (default: 1883).
+
+6. **Subscribe to the MQTT Topics**
+
+   Subscribe to the MQTT topics where the simulated data will be published:
+
+   ```bash
+   mosquitto_sub -h localhost -t "sensor/temp" -v
+   ```
+
+7. **Run the Simulation Engine**
+
+   Finally, start the simulation engine by providing the input configuration file:
 
    ```bash
    python simulator.py --config input_config.yaml
    ```
-
-4. **Set Up Kafka and MQTT**
-
-   - Configure Kafka and MQTT to listen for incoming data from the sensors.
-   - Ensure Docker is running to instantiate the sensor containers.
 
 ## Usage
 
@@ -151,4 +178,6 @@ We welcome contributions! To contribute:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
+
+
 
