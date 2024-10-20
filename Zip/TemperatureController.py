@@ -12,7 +12,7 @@ class TemperatureController:
         self.sensor_manager = sensor_manager
         self.iterations = iterations
         self.config = config
-        self.kafka_consumer = kafka_consumer  # Ora utilizzi KafkaTemperatureConsumer
+        self.kafka_consumer = kafka_consumer  
         self.description = self.generate_unique_description()
   
   

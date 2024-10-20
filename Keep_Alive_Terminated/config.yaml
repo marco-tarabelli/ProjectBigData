@@ -6,7 +6,7 @@ outputs:
     port: 1883
     topic: "/mytopic/${PRODUCER_ID}" 
     frequency: 2
-    frequency_count: 500
+    frequency_count: 50
     
 
 docker_config:

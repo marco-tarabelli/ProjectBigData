@@ -65,12 +65,12 @@ class DockerManager(IDockerManager):
             print(f"Container {self.container_name} not found.")
 
     # Method: run the Docker container for a specified time
-    def run_container(self, keep_alive_ms):      #not used
+    def run_container(self, keep_alive_ms):      
         self.start_container()
         time.sleep(keep_alive_ms)
         self.stop_container()
 
-    # Method: remove the Docker container  #not used
+    # Method: remove the Docker container  
     def remove_container(self):
         container = self.get_existing_container()
         if container:

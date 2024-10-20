@@ -25,6 +25,6 @@ class TemperatureController:
         print(f"Generated unique description: {self.description}")
         time.sleep(self.config['frequency'])  #delay for iteration
         self.sensor_manager.run_sensors(self.iterations, self.description)  
-        # Chiudi il Kafka consumer quando le iterazioni sono finite
+        # Close kafka consumer when the iterations are finished
         self.kafka_consumer.close()
         

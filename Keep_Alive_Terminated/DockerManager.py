@@ -71,7 +71,7 @@ class DockerManager(IDockerManager):
         self.stop_container()
 
     # Method: remove the Docker container
-    #Se può toglie
+    
     def remove_container(self):
         container = self.get_existing_container()
         if container:

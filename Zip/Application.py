@@ -11,7 +11,7 @@ from TemperatureSensor import TemperatureSensor
 # Application class: main application class that sets up and runs the temperature sensors
 class Application:
     def __init__(self):
-        # Carica la configurazione e inizializza i vari componenti
+        # Load the configuration
         self.config = ConfigLoader.load_config()
 
         self.docker_manager = DockerManager(docker_config=self.config['docker_config'])
@@ -27,7 +27,7 @@ class Application:
         )
         self.sensor_manager = SensorManager()
 
-        # Crea e aggiungi sensori dal file di configurazione
+        # Create and add sensor from the config file
         for producer in self.config['producers']:
             if producer['type'] == 'temperature_sensor':
                 self.sensor_manager.add_sensor(
@@ -44,14 +44,14 @@ class Application:
                     DockerSensor(
                         producer_id=producer['id'],
                         docker_manager=self.docker_manager,
-                        kafka_consumer=self.kafka_consumer,  # Passa il consumer ai sensori Docker
+                        kafka_consumer=self.kafka_consumer,  # Consumer Kafka to Docker sensor
                         mqtt_manager=self.mqtt_manager,
                         config=producer['data'],
                         keep_alive_ms=self.config['keep_alive_ms']
                     )
                 )
 
-        # Aggiungi il Kafka consumer al controller
+        
         iterations = self.config['frequency_count']
         if iterations == -1:
             iterations = float('inf')  # Infinite iterations
@@ -60,11 +60,11 @@ class Application:
             sensor_manager=self.sensor_manager,
             iterations=iterations,
             config=self.config,
-            kafka_consumer=self.kafka_consumer  # Passa l'istanza del Kafka consumer qui
+            kafka_consumer=self.kafka_consumer  #Kafka Consumer instance
         )
 
     def run(self):
-        # Esegui l'applicazione
+        # Run the application
         self.controller.run()
 
 if __name__ == "__main__":
