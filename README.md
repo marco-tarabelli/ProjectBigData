@@ -70,14 +70,9 @@ Before running the project, ensure you have installed the following:
 ### Steps to Run
 
 
-1. **Clone the Repository**
 
-   ```bash
-   git clone https://github.com/your-repo/data-simulator.git
-   cd data-simulator
-   ```
 
-2. **Install Dependencies**
+1. **Install Dependencies**
 
    Install required Python libraries:
 
@@ -86,19 +81,19 @@ Before running the project, ensure you have installed the following:
    ```
 
 
-3. **Build Docker Image**:
+2. **Build Docker Image**:
    To build the required Docker image, use the following command:
    ```bash
    docker build -t image_name .
    ```
 
-4. **Set Up Docker Compose**:
+3. **Set Up Docker Compose**:
    Build and start the containers using Docker Compose:
    ```bash
    docker-compose up -d
    ```
 
-5. **Create Kafka Topics**:
+4. **Create Kafka Topics**:
    Kafka topics must be created before starting the application. You can do this by entering the Kafka broker container and running the following commands:
    ```bash
    docker exec -it broker /bin/bash
@@ -106,7 +101,7 @@ Before running the project, ensure you have installed the following:
    kafka-topics --create --topic topic_name --bootstrap-server broker:broker --partitions 1 --replication-factor 1
    ```
 
-6. **Start MQTT Broker**:
+5. **Start MQTT Broker**:
    Ensure your MQTT broker is running on the default port (1883). You can use a service like Mosquitto.
    ```bash
    On the directory of Mosquitto as administrator:
@@ -114,7 +109,7 @@ Before running the project, ensure you have installed the following:
    ```
 
    
-7. **Listen to MQTT Topics**:
+6. **Listen to MQTT Topics**:
    Use an MQTT client to subscribe to the right topic (e.g., `/mytopic/sens_temp_1`), and you will start receiving the sensor data.
    ```bash
    On the directory of Mosquitto
@@ -122,7 +117,7 @@ Before running the project, ensure you have installed the following:
    ```
 
    
-8. **Run the Application**:
+7. **Run the Application**:
    Once everything is set up, run the application:
    ```bash
    python application.py
